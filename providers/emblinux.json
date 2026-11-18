@@ -1,0 +1,212 @@
+{
+  "schema": 1,
+  "id": "emblinux",
+  "_note": "Stage adapter for the Auto and IDE pages. The provider repository is not changed. Placeholders: {bash} {python} {repo} {scripts} {board} {app} {app_dir} {template} {spec} {ts}. A stage passes only when its script exits 0 AND prints a line matching 'gate'; exit 10 or an ACTION: line = waiting for the developer.",
+  "label": "EmbLinux",
+  "repo": "../automated-firmware-skills-emblinux",
+  "env": "FWLC_PROVIDER_EMBLINUX",
+  "targets": [
+    {
+      "board": "uno-q",
+      "label": "Arduino UNO Q",
+      "skill": "applab-zephyr-unoq",
+      "templates": [
+        "hello-world",
+        "blink"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "tools",
+      "label": "0 tools",
+      "argv": [
+        "{python}",
+        "{scripts}/check_tools.py",
+        "{board}"
+      ],
+      "gate": "TOOLS: missing/bad=0",
+      "warn_exit": 2,
+      "timeout_s": 120
+    },
+    {
+      "id": "create",
+      "label": "1 create",
+      "evidence": "created",
+      "argv": [
+        "{python}",
+        "{scripts}/new_app.py",
+        "{board}",
+        "{app}",
+        "{template}"
+      ],
+      "gate": "^CREATE: PASS",
+      "timeout_s": 120,
+      "artifacts": [
+        "app.yaml",
+        "req.md",
+        "arch.json",
+        "python/main.py",
+        "sketch/*",
+        "tests/*.json"
+      ]
+    },
+    {
+      "id": "req",
+      "label": "1 req",
+      "argv": [
+        "{python}",
+        "{scripts}/req_check.py",
+        "{app}"
+      ],
+      "gate": "^REQ: PASS",
+      "timeout_s": 60
+    },
+    {
+      "id": "arch",
+      "label": "2 arch",
+      "argv": [
+        "{python}",
+        "{scripts}/arch_check.py",
+        "{app}"
+      ],
+      "gate": "^ARCH: PASS",
+      "timeout_s": 60
+    },
+    {
+      "id": "code",
+      "label": "3 code",
+      "argv": [
+        "{python}",
+        "{scripts}/code_check.py",
+        "{app}"
+      ],
+      "gate": "^CODE: PASS",
+      "timeout_s": 60
+    },
+    {
+      "id": "connect",
+      "label": "0b connect",
+      "argv": [
+        "{python}",
+        "{scripts}/discover.py",
+        "{board}"
+      ],
+      "gate": "^IDENTITY: PASS",
+      "warn_exit": 2,
+      "needs_board": true,
+      "timeout_s": 180
+    },
+    {
+      "id": "build",
+      "label": "4 build",
+      "evidence": "built",
+      "argv": [
+        "{python}",
+        "{scripts}/build.py",
+        "{app}"
+      ],
+      "approve_flag": "--yes",
+      "gate": "^BUILD: PASS",
+      "warn_exit": 2,
+      "needs_board": true,
+      "changes_board": true,
+      "timeout_s": 1200,
+      "artifacts": [
+        "logs/release/*",
+        "logs/build*"
+      ]
+    },
+    {
+      "id": "flash",
+      "label": "5 run",
+      "evidence": "flashed",
+      "argv": [
+        "{python}",
+        "{scripts}/run.py",
+        "{app}"
+      ],
+      "approve_flag": "--yes",
+      "gate": "^RUN: PASS",
+      "needs_board": true,
+      "changes_board": true,
+      "timeout_s": 600,
+      "artifacts": [
+        "logs/run*"
+      ]
+    },
+    {
+      "id": "test",
+      "label": "6 test",
+      "evidence": "tested",
+      "argv": [
+        "{python}",
+        "{scripts}/test.py",
+        "{app}"
+      ],
+      "approve_flag": "--yes",
+      "gate": "^RESULT: PASS",
+      "warn_exit": 2,
+      "needs_board": true,
+      "timeout_s": 900,
+      "artifacts": [
+        "logs/test-*.log"
+      ]
+    },
+    {
+      "id": "ide",
+      "label": "2d open IDE",
+      "argv": [
+        "{python}",
+        "{scripts}/open_ide.py",
+        "{app}"
+      ],
+      "gate": "^IDE: OPENED",
+      "timeout_s": 300
+    },
+    {
+      "id": "clean",
+      "label": "16 clean board",
+      "argv": [
+        "{python}",
+        "{scripts}/clean.py",
+        "{app}"
+      ],
+      "approve_flag": "--yes",
+      "gate": "^CLEAN: done",
+      "needs_board": true,
+      "changes_board": true,
+      "timeout_s": 600
+    },
+    {
+      "id": "delete",
+      "label": "16 delete",
+      "builtin": "delete_app",
+      "marker": "uq-app.env",
+      "approve_flag": "--yes",
+      "gate": "^DELETE: done",
+      "deletes_app": true,
+      "timeout_s": 600
+    }
+  ],
+  "flows": {
+    "auto": [
+      "tools",
+      "create",
+      "req",
+      "arch",
+      "code",
+      "connect",
+      "build",
+      "flash",
+      "test",
+      "clean",
+      "delete"
+    ],
+    "ide": [
+      "tools",
+      "create",
+      "ide"
+    ]
+  }
+}

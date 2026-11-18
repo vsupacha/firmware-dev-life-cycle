@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reply", "questions", "proposals"],
+  "properties": {
+    "reply": {"type": "string"},
+    "questions": {"type": "array", "items": {"type": "string"}},
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["operation", "story_id", "base_revision", "title", "role", "want", "benefit", "acceptance_criteria", "open_questions", "feasibility", "feasibility_reason", "capability_refs"],
+        "properties": {
+          "operation": {"type": "string", "enum": ["create", "update"]},
+          "story_id": {"type": ["string", "null"]},
+          "base_revision": {"type": ["integer", "null"]},
+          "title": {"type": "string"},
+          "role": {"type": "string"},
+          "want": {"type": "string"},
+          "benefit": {"type": "string"},
+          "acceptance_criteria": {
+            "type": "array", "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["id", "text", "test_intent", "requires_hardware"],
+              "properties": {
+                "id": {"type": "string"}, "text": {"type": "string"},
+                "test_intent": {"type": "string"}, "requires_hardware": {"type": "boolean"}
+              }
+            }
+          },
+          "open_questions": {"type": "array", "items": {"type": "string"}},
+          "feasibility": {"type": "string", "enum": ["unknown", "supported", "needs-spike", "unsupported"]},
+          "feasibility_reason": {"type": "string"},
+          "capability_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

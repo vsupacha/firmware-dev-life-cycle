@@ -1,0 +1,175 @@
+{
+  "schema": 1,
+  "id": "rt-thread",
+  "_note": "Stage adapter for the Auto and IDE pages. The provider repository is not changed. Placeholders: {bash} {python} {repo} {scripts} {board} {app} {app_dir} {template} {spec} {ts}. A stage passes only when its script exits 0 AND prints a line matching 'gate'; exit 10 or an ACTION: line = waiting for the developer.",
+  "label": "RT-Thread",
+  "repo": "../automated-firmware-skills-rtthread",
+  "env": "FWLC_PROVIDER_RT_THREAD",
+  "targets": [
+    {
+      "board": "titan-board",
+      "label": "Titan Board (RA8P1)",
+      "skill": "scons-rtthread-titanboard",
+      "templates": [
+        "blink",
+        "hello-world"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "tools",
+      "label": "1 tools",
+      "argv": [
+        "{bash}",
+        "{scripts}/check_tools.sh",
+        "{board}"
+      ],
+      "gate": "missing/bad=0",
+      "timeout_s": 300
+    },
+    {
+      "id": "create",
+      "label": "2 create",
+      "evidence": "created",
+      "argv": [
+        "{bash}",
+        "{scripts}/new_app.sh",
+        "{board}",
+        "{app}",
+        "",
+        "{template}",
+        "--no-open"
+      ],
+      "gate": "Created ",
+      "timeout_s": 1200,
+      "artifacts": [
+        "tests/*.json",
+        "logs/create*.log",
+        "logs/regen*.log"
+      ]
+    },
+    {
+      "id": "build",
+      "label": "3 build",
+      "evidence": "built",
+      "argv": [
+        "{bash}",
+        "{scripts}/build.sh",
+        "{app_dir}"
+      ],
+      "gate": "^BUILD: PASS",
+      "timeout_s": 1200,
+      "artifacts": [
+        "app.hex",
+        "rtthread.elf",
+        "build/manifest.txt",
+        "logs/build*.log"
+      ]
+    },
+    {
+      "id": "connect",
+      "label": "4 connect",
+      "argv": [
+        "{bash}",
+        "{scripts}/discover.sh",
+        "{board}"
+      ],
+      "gate": "^IDENTITY: PASS",
+      "needs_board": true,
+      "timeout_s": 180
+    },
+    {
+      "id": "flash",
+      "label": "5 flash",
+      "evidence": "flashed",
+      "argv": [
+        "{bash}",
+        "{scripts}/flash.sh",
+        "{app_dir}"
+      ],
+      "approve_flag": "--yes",
+      "binds": "app.hex",
+      "gate": "^FLASH: PASS",
+      "needs_board": true,
+      "changes_board": true,
+      "timeout_s": 600,
+      "artifacts": [
+        "logs/flash*.log"
+      ]
+    },
+    {
+      "id": "test",
+      "label": "6 test",
+      "evidence": "tested",
+      "argv": [
+        "{python}",
+        "{scripts}/serial_test.py",
+        "auto",
+        "{app_dir}/tests/{spec}.json",
+        "{app_dir}/logs/test-{ts}.log",
+        "--board",
+        "{board}"
+      ],
+      "gate": "^RESULT: PASS",
+      "needs_board": true,
+      "timeout_s": 600,
+      "artifacts": [
+        "logs/test-*.log"
+      ]
+    },
+    {
+      "id": "ide",
+      "label": "2d open IDE",
+      "argv": [
+        "{bash}",
+        "{scripts}/open_ide.sh",
+        "{app_dir}"
+      ],
+      "gate": "^IDE: OPENED",
+      "timeout_s": 600
+    },
+    {
+      "id": "debug",
+      "label": "7 status",
+      "argv": [
+        "{python}",
+        "{scripts}/msh_status.py",
+        "auto",
+        "--board",
+        "{board}"
+      ],
+      "gate": "^MSH: PASS",
+      "warn_exit": 2,
+      "needs_board": true,
+      "timeout_s": 300
+    },
+    {
+      "id": "delete",
+      "label": "16 delete",
+      "builtin": "delete_app",
+      "marker": "rtt-app.env",
+      "approve_flag": "--yes",
+      "gate": "^DELETE: done",
+      "deletes_app": true,
+      "timeout_s": 600
+    }
+  ],
+  "flows": {
+    "auto": [
+      "tools",
+      "create",
+      "build",
+      "connect",
+      "flash",
+      "test",
+      "debug",
+      "delete"
+    ],
+    "ide": [
+      "tools",
+      "create",
+      "ide"
+    ]
+  }
+}
